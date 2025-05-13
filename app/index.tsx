@@ -1,79 +1,146 @@
-import { View, Text, TouchableOpacity, StyleSheet, ImageBackground } from "react-native";
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ImageBackground,
+  Dimensions,
+  ScrollView,
+} from "react-native";
 import { useRouter } from "expo-router";
+import { db } from "../services/firebase";
+import { collection, getDocs } from "firebase/firestore";
+import { LineChart } from "react-native-chart-kit";
+
+const screenWidth = Dimensions.get("window").width;
 
 export default function Index() {
   const router = useRouter();
+  const [gestoes, setGestoes] = useState<any[]>([]);
+
+  const fetchGestoes = async () => {
+    try {
+      const snapshot = await getDocs(collection(db, "gestoes"));
+      const dados = snapshot.docs.map(doc => doc.data());
+      setGestoes(dados);
+    } catch (error) {
+      console.error("Erro ao buscar dados das gestões:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchGestoes();
+  }, []);
+
+  // Dados simulados para o gráfico (substitua conforme necessário)
+  const chartData = {
+    labels: gestoosLabels(gestoes),
+    datasets: [
+      {
+        data: gestoosValores(gestoes),
+        strokeWidth: 2,
+      },
+    ],
+  };
 
   return (
     <ImageBackground
-      source={require("../assets/logo.jpg")} // Caminho para a imagem logo.jpg
+      source={require("../assets/logo.jpg")}
       style={styles.container}
-      imageStyle={styles.image} // A imagem de fundo vai cobrir toda a tela
+      imageStyle={styles.image}
     >
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <Text style={styles.title}>Resumo da Produção</Text>
 
-      {/* Botões */}
-      <View style={styles.buttonContainer}>
+        <View style={styles.infoBox}>
+          <Text style={styles.infoText}>Registros de gestão: {gestoes.length}</Text>
+        </View>
+
+        {gestoes.length > 0 && (
+          <LineChart
+            data={chartData}
+            width={screenWidth - 40}
+            height={220}
+            chartConfig={{
+              backgroundGradientFrom: "#2F3A44",
+              backgroundGradientTo: "#1E1E1E",
+              color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+              labelColor: () => "#FFFFFF",
+              decimalPlaces: 0,
+            }}
+            bezier
+            style={styles.chart}
+          />
+        )}
+
         <TouchableOpacity
           style={styles.button}
-          onPress={() => router.push("/add-cultivo")}
+          onPress={() => router.push("/gestao")}
         >
           <Text style={styles.buttonText}>Adicionar Cultivo</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => router.push("/add-insumo")}
-        >
-          <Text style={styles.buttonText}>Adicionar Insumo</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => router.push("/historico")}
-        >
-          <Text style={styles.buttonText}>Ver Histórico</Text>
-        </TouchableOpacity>
-      </View>
+      </ScrollView>
     </ImageBackground>
   );
+}
+
+// Função para extrair datas ou nomes como labels do gráfico
+function gestoosLabels(gestoes: any[]) {
+  return gestoes.map((g, index) => g.data || `#${index + 1}`).slice(0, 5);
+}
+
+// Função para extrair valores numéricos para o gráfico
+function gestoosValores(gestoes: any[]) {
+  return gestoes.map(g => Number(g.quantidade) || 0).slice(0, 5);
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
   },
   image: {
-    resizeMode: "cover", // A imagem vai cobrir toda a tela
-    justifyContent: "center", // Alinha o conteúdo no centro
+    resizeMode: "cover",
+  },
+  scrollContainer: {
+    alignItems: "center",
+    padding: 20,
+    paddingTop: 80,
   },
   title: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: "bold",
-    marginBottom: 40,
-    color: "#FFFFFF", // Cor do texto alterada para branco, para melhor visibilidade na imagem
-    textShadowColor: "rgba(0, 0, 0, 0.6)",
+    color: "#FFF",
+    marginBottom: 20,
+    textShadowColor: "rgba(0, 0, 0, 0.7)",
     textShadowOffset: { width: 2, height: 2 },
     textShadowRadius: 5,
   },
-  buttonContainer: {
-    position: "absolute",
-    bottom: 30, // Ajusta a distância dos botões para o fundo
-    left: 0,
-    right: 0,
-    alignItems: "center", // Centraliza os botões
+  infoBox: {
+    backgroundColor: "rgba(0,0,0,0.6)",
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 20,
+    width: "100%",
+  },
+  infoText: {
+    color: "#FFF",
+    fontSize: 18,
+    marginBottom: 5,
+  },
+  chart: {
+    marginVertical: 10,
+    borderRadius: 10,
   },
   button: {
-    backgroundColor: "#2F3A44", // Azul escuro acinzentado
+    backgroundColor: "#2F3A44",
     paddingVertical: 15,
     paddingHorizontal: 30,
     borderRadius: 10,
-    marginVertical: 10,
-    width: "80%", // Ajusta a largura dos botões
+    marginTop: 20,
+    width: "80%",
     alignItems: "center",
-    opacity: 0.8, // Torna os botões ligeiramente transparentes
+    opacity: 0.9,
   },
   buttonText: {
     color: "#FFFFFF",
