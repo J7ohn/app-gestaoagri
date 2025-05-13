@@ -73,13 +73,21 @@ export default function Index() {
             style={styles.chart}
           />
         )}
-
+        
         <TouchableOpacity
           style={styles.button}
           onPress={() => router.push("/gestao")}
         >
           <Text style={styles.buttonText}>Adicionar Cultivo</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => router.push("/add-cultivo")}
+        >
+          <Text style={styles.buttonText}>Cultivo Beta</Text>
+        </TouchableOpacity>
+
       </ScrollView>
     </ImageBackground>
   );

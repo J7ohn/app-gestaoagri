@@ -9,15 +9,24 @@ import {
   FlatList,
   Alert,
 } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { Picker } from "@react-native-picker/picker";
+import { useRouter } from "expo-router";
 import { collection, addDoc, getDocs } from "firebase/firestore";
 import { db } from "../services/firebase";
 
 export default function Gestao() {
+  const router = useRouter();
   const [nomeCultivo, setNomeCultivo] = useState("");
   const [nomeInsumo, setNomeInsumo] = useState("");
   const [quantidade, setQuantidade] = useState("");
-  const [data, setData] = useState("");
+  const [data, setData] = useState(new Date());
+  const [mostrarPicker, setMostrarPicker] = useState(false);
   const [gestoes, setGestoes] = useState<any[]>([]);
+
+  const formatarData = (data: Date) => {
+    return data.toLocaleDateString("pt-BR"); // formato DD/MM/AAAA
+  };
 
   const fetchDados = async () => {
     const snapshot = await getDocs(collection(db, "gestoes"));
@@ -29,7 +38,7 @@ export default function Gestao() {
   }, []);
 
   const adicionarGestao = async () => {
-    if (!nomeCultivo.trim() || !nomeInsumo.trim() || !quantidade.trim() || !data.trim()) {
+    if (!nomeCultivo.trim() || !nomeInsumo.trim() || !quantidade.trim() || !data) {
       Alert.alert("Preencha todos os campos");
       return;
     }
@@ -38,13 +47,12 @@ export default function Gestao() {
       nomeCultivo,
       nomeInsumo,
       quantidade,
-      data,
+      data: formatarData(data),
     });
 
     setNomeCultivo("");
     setNomeInsumo("");
     setQuantidade("");
-    setData("");
     fetchDados();
   };
 
@@ -52,12 +60,17 @@ export default function Gestao() {
     <View style={styles.container}>
       <Text style={styles.title}>Gestão Agrícola</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Nome do Cultivo"
-        value={nomeCultivo}
-        onChangeText={setNomeCultivo}
-      />
+    <View style={styles.input}>
+            <Picker
+              selectedValue={nomeCultivo}
+              onValueChange={(itemValue) => setNomeCultivo(itemValue)}
+            >
+              <Picker.Item label="Selecione o cultivo" value="" enabled={false} />
+              <Picker.Item label="Milho" value="Milho" />
+              <Picker.Item label="Soja" value="Soja" />
+            </Picker>
+      </View>
+
       <TextInput
         style={styles.input}
         placeholder="Nome do Insumo"
@@ -70,16 +83,33 @@ export default function Gestao() {
         value={quantidade}
         onChangeText={setQuantidade}
       />
-      <TextInput
+      <TouchableOpacity
+        onPress={() => setMostrarPicker(true)}
         style={styles.input}
-        placeholder="Data (ex: 13/05/2025)"
-        value={data}
-        onChangeText={setData}
-      />
+      >
+        <Text style={{ color: data ? "#000" : "#aaa" }}>
+          {data ? formatarData(data) : "Selecione a data do plantio"}
+        </Text>
+      </TouchableOpacity>
+
+      {mostrarPicker && (
+        <DateTimePicker
+          value={data}
+          mode="date"
+          onChange={(event, selectedDate) => {
+            setMostrarPicker(false);
+            if (selectedDate) {
+              setData(selectedDate);
+            }
+          }}
+        />
+      )}
 
       <TouchableOpacity style={styles.button} onPress={adicionarGestao}>
         <Text style={styles.buttonText}>Registrar Gestão</Text>
       </TouchableOpacity>
+
+
 
       <Text style={styles.subTitle}>Histórico de Gestão</Text>
       <View style={styles.tableHeader}>
