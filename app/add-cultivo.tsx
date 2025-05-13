@@ -1,12 +1,19 @@
 import { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Platform,} from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
 
 export default function AddCultivo() {
   const router = useRouter();
   const [nome, setNome] = useState("");
-  const [data, setData] = useState("");
+  const [data, setData] = useState(new Date());
+  const [mostrarPicker, setMostrarPicker] = useState(false);
   const [local, setLocal] = useState("");
+
+  const formatarData = (data: Date) => {
+    return data.toLocaleDateString("pt-BR"); // formato DD/MM/AAAA
+  };
 
   const salvarCultivo = () => {
     if (!nome || !data || !local) {
@@ -14,29 +21,31 @@ export default function AddCultivo() {
       return;
     }
 
-    // Aqui futuramente salvaremos no banco (SQLite ou AsyncStorage)
-    console.log("Cultivo salvo:", { nome, data, local });
+    console.log("Cultivo salvo:", {
+      nome,
+      data: formatarData(data),
+      local,
+    });
 
     Alert.alert("Cultivo salvo com sucesso!");
-    router.back(); // Volta para a tela anterior
+    router.back();
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Adicionar Cultivo</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Nome do cultivo (ex: Milho)"
-        value={nome}
-        onChangeText={setNome}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Data de plantio (ex: 25/04/2025)"
-        value={data}
-        onChangeText={setData}
-      />
+      <View style={styles.input}>
+        <Picker
+          selectedValue={nome}
+          onValueChange={(itemValue) => setNome(itemValue)}
+        >
+          <Picker.Item label="Selecione o cultivo" value="" enabled={false} />
+          <Picker.Item label="Milho" value="Milho" />
+          <Picker.Item label="Soja" value="Soja" />
+        </Picker>
+      </View>
+
       <TextInput
         style={styles.input}
         placeholder="Local (ex: Lote 3, Sítio Boa Fé)"
@@ -44,12 +53,36 @@ export default function AddCultivo() {
         onChangeText={setLocal}
       />
 
+      <TouchableOpacity
+        onPress={() => setMostrarPicker(true)}
+        style={styles.input}
+      >
+        <Text style={{ color: data ? "#000" : "#aaa" }}>
+          {data ? formatarData(data) : "Selecione a data do plantio"}
+        </Text>
+      </TouchableOpacity>
+
+      {mostrarPicker && (
+        <DateTimePicker
+          value={data}
+          mode="date"
+          display={Platform.OS === "ios" ? "spinner" : "calendar"}
+          onChange={(event, selectedDate) => {
+            setMostrarPicker(false);
+            if (selectedDate) {
+              setData(selectedDate);
+            }
+          }}
+        />
+      )}
+
       <TouchableOpacity style={styles.button} onPress={salvarCultivo}>
         <Text style={styles.buttonText}>Salvar Cultivo</Text>
       </TouchableOpacity>
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
