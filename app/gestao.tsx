@@ -1,4 +1,3 @@
-// app/gestao.tsx
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -12,8 +11,7 @@ import {
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
-import { collection, addDoc, getDocs } from "firebase/firestore";
-import { db } from "../services/firebase";
+import { addGestao, getGestoes } from "../services/database";
 
 export default function Gestao() {
   const router = useRouter();
@@ -25,12 +23,17 @@ export default function Gestao() {
   const [gestoes, setGestoes] = useState<any[]>([]);
 
   const formatarData = (data: Date) => {
-    return data.toLocaleDateString("pt-BR"); // formato DD/MM/AAAA
+    return data.toLocaleDateString("pt-BR");
   };
 
   const fetchDados = async () => {
-    const snapshot = await getDocs(collection(db, "gestoes"));
-    setGestoes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    try {
+      const dados = await getGestoes();
+      setGestoes(dados);
+    } catch (error) {
+      console.error('Erro ao buscar dados:', error);
+      Alert.alert('Erro', 'Não foi possível carregar os dados.');
+    }
   };
 
   useEffect(() => {
@@ -43,32 +46,38 @@ export default function Gestao() {
       return;
     }
 
-    await addDoc(collection(db, "gestoes"), {
-      nomeCultivo,
-      nomeInsumo,
-      quantidade,
-      data: formatarData(data),
-    });
+    try {
+      await addGestao({
+        nomeCultivo,
+        nomeInsumo,
+        quantidade,
+        data: formatarData(data),
+      });
 
-    setNomeCultivo("");
-    setNomeInsumo("");
-    setQuantidade("");
-    fetchDados();
+      setNomeCultivo("");
+      setNomeInsumo("");
+      setQuantidade("");
+      fetchDados();
+      Alert.alert("Sucesso", "Gestão registrada com sucesso!");
+    } catch (error) {
+      console.error('Erro ao adicionar gestão:', error);
+      Alert.alert('Erro', 'Não foi possível salvar os dados.');
+    }
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Gestão Agrícola</Text>
 
-    <View style={styles.input}>
-            <Picker
-              selectedValue={nomeCultivo}
-              onValueChange={(itemValue) => setNomeCultivo(itemValue)}
-            >
-              <Picker.Item label="Selecione o cultivo" value="" enabled={false} />
-              <Picker.Item label="Milho" value="Milho" />
-              <Picker.Item label="Soja" value="Soja" />
-            </Picker>
+      <View style={styles.input}>
+        <Picker
+          selectedValue={nomeCultivo}
+          onValueChange={(itemValue) => setNomeCultivo(itemValue)}
+        >
+          <Picker.Item label="Selecione o cultivo" value="" enabled={false} />
+          <Picker.Item label="Milho" value="Milho" />
+          <Picker.Item label="Soja" value="Soja" />
+        </Picker>
       </View>
 
       <TextInput
@@ -109,8 +118,6 @@ export default function Gestao() {
         <Text style={styles.buttonText}>Registrar Gestão</Text>
       </TouchableOpacity>
 
-
-
       <Text style={styles.subTitle}>Histórico de Gestão</Text>
       <View style={styles.tableHeader}>
         <Text style={styles.cellHeader}>Cultivo</Text>
@@ -120,7 +127,7 @@ export default function Gestao() {
       </View>
       <FlatList
         data={gestoes}
-        keyExtractor={item => item.id}
+        keyExtractor={item => item.id.toString()}
         renderItem={({ item }) => (
           <View style={styles.row}>
             <Text style={styles.cell}>{item.nomeCultivo}</Text>
@@ -143,6 +150,7 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 10,
     borderRadius: 5,
+    backgroundColor: "#fff",
   },
   button: {
     backgroundColor: "#1E88E5",

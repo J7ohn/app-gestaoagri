@@ -10,10 +10,9 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { db } from "../services/firebase";
-import { collection, getDocs } from "firebase/firestore";
 import { LineChart, PieChart } from "react-native-chart-kit";
 import { Ionicons } from "@expo/vector-icons";
+import { initDatabase, getGestoes, getStatistics } from "../services/database";
 
 const screenWidth = Dimensions.get("window").width;
 
@@ -27,48 +26,34 @@ export default function Index() {
     cultivosPorTipo: [] as any[],
   });
 
-  const fetchGestoes = async () => {
-    try {
-      const snapshot = await getDocs(collection(db, "gestoes"));
-      const dados = snapshot.docs.map((doc) => doc.data());
-      setGestoes(dados);
-      
-      // Calcular estatísticas
-      const cultivosPorTipo = dados.reduce((acc: any, curr: any) => {
-        acc[curr.nomeCultivo] = (acc[curr.nomeCultivo] || 0) + 1;
-        return acc;
-      }, {});
-
-      setStats({
-        totalCultivos: dados.length,
-        totalInsumos: dados.filter((d: any) => d.nomeInsumo).length,
-        cultivosPorTipo: Object.entries(cultivosPorTipo).map(([name, value]) => ({
-          name,
-          value,
-          color: getRandomColor(),
-          legendFontColor: "#7F7F7F",
-          legendFontSize: 12,
-        })),
-      });
-      
-      setLoading(false);
-    } catch (error) {
-      console.error("Erro ao buscar dados:", error);
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchGestoes();
+    const setupDatabase = async () => {
+      try {
+        await initDatabase();
+        await fetchData();
+      } catch (error) {
+        console.error('Error setting up database:', error);
+        setLoading(false);
+      }
+    };
+
+    setupDatabase();
   }, []);
 
-  const getRandomColor = () => {
-    const letters = '0123456789ABCDEF';
-    let color = '#';
-    for (let i = 0; i < 6; i++) {
-      color += letters[Math.floor(Math.random() * 16)];
+  const fetchData = async () => {
+    try {
+      const [dadosGestoes, estatisticas] = await Promise.all([
+        getGestoes(),
+        getStatistics()
+      ]);
+      
+      setGestoes(dadosGestoes);
+      setStats(estatisticas);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      setLoading(false);
     }
-    return color;
   };
 
   const chartData = {
