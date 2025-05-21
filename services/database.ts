@@ -1,4 +1,6 @@
 import * as SQLite from 'expo-sqlite';
+import { scheduleHarvestNotification, scheduleInsumoLowStockNotification } from './notifications';
+import { culturaSchema, insumoSchema, aplicacaoSchema } from './validation';
 
 const db = SQLite.openDatabase('gestaoagri.db');
 
@@ -79,23 +81,40 @@ export const initDatabase = () => {
 };
 
 // Culturas CRUD
-export const addCultura = (cultura: Cultura) => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      tx.executeSql(
-        `INSERT INTO culturas (nome, variedade, data_plantio, area, data_colheita, status)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [cultura.nome, cultura.variedade, cultura.data_plantio, cultura.area, 
-         cultura.data_colheita, cultura.status],
-        (_, { insertId }) => resolve(insertId),
-        (_, error) => {
-          console.error('Error adding cultura:', error);
-          reject(error);
-          return false;
-        }
-      );
+export const addCultura = async (cultura: Cultura) => {
+  try {
+    await culturaSchema.validate(cultura);
+    
+    const result = await new Promise((resolve, reject) => {
+      db.transaction(tx => {
+        tx.executeSql(
+          `INSERT INTO culturas (nome, variedade, data_plantio, area, data_colheita, status)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [cultura.nome, cultura.variedade, cultura.data_plantio, cultura.area, 
+           cultura.data_colheita, cultura.status],
+          (_, { insertId }) => resolve(insertId),
+          (_, error) => {
+            reject(error);
+            return false;
+          }
+        );
+      });
     });
-  });
+
+    // Schedule harvest notification
+    await scheduleHarvestNotification(
+      result as number,
+      cultura.nome,
+      cultura.data_colheita
+    );
+
+    return result;
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new Error(`Erro ao adicionar cultura: ${error.message}`);
+    }
+    throw error;
+  }
 };
 
 export const getCulturas = (status?: string) => {
@@ -138,22 +157,39 @@ export const updateCulturaStatus = (id: number, status: string) => {
 };
 
 // Insumos CRUD
-export const addInsumo = (insumo: Insumo) => {
-  return new Promise((resolve, reject) => {
-    db.transaction(tx => {
-      tx.executeSql(
-        `INSERT INTO insumos (nome, tipo, quantidade_estoque)
-         VALUES (?, ?, ?)`,
-        [insumo.nome, insumo.tipo, insumo.quantidade_estoque],
-        (_, { insertId }) => resolve(insertId),
-        (_, error) => {
-          console.error('Error adding insumo:', error);
-          reject(error);
-          return false;
-        }
-      );
+export const addInsumo = async (insumo: Insumo) => {
+  try {
+    await insumoSchema.validate(insumo);
+    
+    const result = await new Promise((resolve, reject) => {
+      db.transaction(tx => {
+        tx.executeSql(
+          `INSERT INTO insumos (nome, tipo, quantidade_estoque)
+           VALUES (?, ?, ?)`,
+          [insumo.nome, insumo.tipo, insumo.quantidade_estoque],
+          (_, { insertId }) => resolve(insertId),
+          (_, error) => {
+            reject(error);
+            return false;
+          }
+        );
+      });
     });
-  });
+
+    // Check stock level and notify if low
+    await scheduleInsumoLowStockNotification(
+      result as number,
+      insumo.nome,
+      insumo.quantidade_estoque
+    );
+
+    return result;
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new Error(`Erro ao adicionar insumo: ${error.message}`);
+    }
+    throw error;
+  }
 };
 
 export const getInsumos = () => {
