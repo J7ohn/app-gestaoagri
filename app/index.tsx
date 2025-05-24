@@ -172,14 +172,7 @@ export default function Index() {
             <Ionicons name="add-circle-outline" size={24} color="#FFFFFF" />
             <Text style={styles.buttonText}>Nova Gestão</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.button, styles.secondaryButton]}
-            onPress={() => router.push("/add-cultivo")}
-          >
-            <Ionicons name="leaf-outline" size={24} color="#FFFFFF" />
-            <Text style={styles.buttonText}>Novo Cultivo</Text>
-          </TouchableOpacity>
+          
         </View>
       </ScrollView>
     </ImageBackground>
